@@ -15,11 +15,9 @@ app.use(express.urlencoded({ extended: true }));
 // routes
 routes(app, "/AuthenticationService/api/v1")
 
-app.get("/api", async (req, res) => {
+app.get("/AuthenticationService/api", async (req, res) => {
     try {
-        const data = {
-            id: 1,
-        };
+        const data = "Authentication Service Working Fine";
         return responser.send(200, "GET Method is working fine", req, res, data);
     } catch (error) {
         console.log("error");

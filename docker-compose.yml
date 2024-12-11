@@ -1,0 +1,57 @@
+version: '3.8'
+services:
+
+#########################################
+# node core api
+#########################################
+  api:
+    image: backend_api:v1
+    container_name: backend_apis
+    restart: always
+    # env_file:
+    #   - .env
+    ports:
+      - 5006:5006
+    depends_on:
+      - db   
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-X", "GET", "http://localhost:5006/AuthenticationService/api"]
+      interval: 30s
+      timeout: 10s
+      retries: 3      
+    volumes:
+      - ./:/usr/app      
+    # networks:
+    #   - app-network      
+
+#########################################
+# Database Mongo 
+#########################################      
+  db:
+    image: mongo:6.0.13
+    container_name: mongo_instance
+    restart: unless-stopped
+    # env_file:
+    #   - .env  
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: testing        
+    ports:
+      - 27018:27017
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.auth('root', 'testing'); db.stats()", "--authenticationDatabase", "admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 4          
+    # networks:
+    #   - app-network    
+
+
+#########################################
+# volumes & networks
+######################################### 
+
+volumes:
+  mongo_data:  
