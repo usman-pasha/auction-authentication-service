@@ -2,7 +2,7 @@
 
 
 1. Generate Backend Docker Image
-   docker build -t api:v1 .
+   docker build -t backend_api:v1 .
 2. Run Docker Compose file
    docker-compose -d up
 3. Test API Health
