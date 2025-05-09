@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Bidding</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #4a90e2;
+        }
+
+        #bidForm {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fff;
+            max-width: 400px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #bidForm input {
+            width: 90%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        #bidForm button {
+            background-color: #4a90e2;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #bidForm button:hover {
+            background-color: #357abf;
+        }
+
+        #bids {
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        #bidList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #bidList li {
+            background-color: #f9f9f9;
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        #message {
+            text-align: center;
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            max-width: 400px;
+            margin: 20px auto;
+        }
+
+        #message.success {
+            color: #fff;
+            background-color: #4caf50;
+        }
+
+        #message.error {
+            color: #fff;
+            background-color: #f44336;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Real-Time Bidding</h1>
+    <form id="bidForm">
+        <input type="text" id="auctionProductId" placeholder="Auction ID" required />
+        <input type="text" id="userId" placeholder="User ID" required />
+        <input type="number" id="bidAmount" placeholder="Bid Amount" required />
+        <button type="submit">Place Bid</button>
+    </form>
+
+    <div id="bids">
+        <h2>Latest Bids</h2>
+        <ul id="bidList"></ul>
+    </div>
+
+    <!-- Section to display success or error messages -->
+    <div id="message"></div>
+
+    <script>
+        // Connect to the Socket.IO server
+        const socket = io("http://localhost:5006");
+
+        // Form submission handler
+        const bidForm = document.getElementById("bidForm");
+        const messageDiv = document.getElementById("message");
+
+        bidForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+
+            // Capture form data
+            const data = {
+                auctionProductId: document.getElementById("auctionProductId").value,
+                userId: document.getElementById("userId").value,
+                bidAmount: document.getElementById("bidAmount").value,
+            };
+
+            // Clear previous messages
+            messageDiv.textContent = "";
+            messageDiv.className = "";
+
+            // Send the data object to the server
+            socket.emit("placeBid", data);
+        });
+
+        socket.on("bidUpdated", (data) => {
+            console.log("data", data);
+            const bidList = document.getElementById("bidList");
+
+            // Clear the existing list
+            bidList.innerHTML = "";
+
+            // Loop through the data array and create list items for each bid
+            data.forEach((bid) => {
+                const listItem = document.createElement("li");
+                listItem.textContent = `
+            Auction: ${bid.auctionProductId.title}, 
+            Bidder: ${bid.userId.username}, 
+            Amount: ${bid.bidAmount}, 
+            Time: ${new Date(bid.bidTime).toLocaleString()}
+        `;
+                bidList.appendChild(listItem);
+            });
+        });
+
+        // Handle bid success
+        socket.on("bidSuccess", (data) => {
+            messageDiv.textContent = data.message;
+            messageDiv.className = "success";
+        });
+
+        // Handle bid errors
+        socket.on("bidError", (data) => {
+            messageDiv.textContent = `Error: ${data.message}`;
+            messageDiv.className = "error";
+        });
+    </script>
+</body>
+
+</html>
