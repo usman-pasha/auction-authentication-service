@@ -36,3 +36,39 @@ export const isEmail = (email) => {
     }
     return false;
 };
+
+
+// const now = new Date()
+// const generateDateFormat = (date, type) => {
+//     if (type === "timestamp") {
+//         return (
+//             ("0" + date.getDate()).slice(-2) +
+//             ("0" + (date.getMonth() + 1)).slice(-2) +
+//             date.getFullYear().toString()
+//         );
+//     } else if (type === "yyyy-mm-dd hh:mm:ss") {
+//         return (
+//             date.getFullYear().toString() +
+//             "-" +
+//             ("0" + (date.getMonth() + 1)).slice(-2) +
+//             "-" +
+//             ("0" + date.getDate()).slice(-2) +
+//             " " +
+//             ("0" + date.getHours()).slice(-2) +
+//             ":" +
+//             ("0" + date.getMinutes()).slice(-2) +
+//             ":" +
+//             ("0" + date.getSeconds()).slice(-2)
+//         );
+//     } else if (type === "custom") {
+//         return (
+//             ("0" + date.getDate()).slice(-2) +
+//             //"/" +
+//             ("0" + (date.getMonth() + 1)).slice(-2) +
+//             // "/" +
+//             date.getFullYear().toString()
+//         );
+//     }
+// };
+
+// console.log(generateDateFormat(now, "yyyy-mm-dd hh:mm:ss"));

@@ -5,8 +5,6 @@ import * as logger from "../utility/log.js";
 import mongoose from "mongoose";
 // import { Schema } from "mongoose"
 // const ObjectId = Schema.Types.ObjectId
-import { config } from "../config/index.js";
-import { getMethod } from "../utility/commonApi.js"
 
 export const createRecord = async (object) => {
     const record = await auctionModel.create(object);
@@ -38,122 +36,77 @@ export const deleteRecord = async (condition) => {
     return record;
 };
 
-const parseCustomDateFormat = (dateString) => {
-    const [datePart, timePart] = dateString.split(" ");
+const parseIndianDateTime = (dateTimeString) => {
+    const [datePart, timePart] = dateTimeString.split(" ");
     const [day, month, year] = datePart.split("/").map(Number);
-    const [hours, minutes, seconds] = timePart.split(":").map(Number);
+    const [hours, minutes] = timePart.split(":").map(Number);
 
-    return new Date(year, month - 1, day, hours, minutes, seconds);
+    // Create a date in IST
+    const istDate = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
+    return new Date(istDate.getTime() + 5.5 * 60 * 60 * 1000); // Shift to IST
 };
 
 
-// validation.js
 export const validateAuctionData = (data) => {
-
-    if (!data.title || typeof data.title !== "string" || data.title.trim().length < 3) {
-        throw new AppError(400, "Title is required and must be at least 3 characters long.");
-    }
-
-    if (!data.description || typeof data.description !== "string" || data.description.trim().length < 10) {
-        throw new AppError(400, "Description is required and must be at least 10 characters long.");
-    }
-
-    if (!data.categoryId || !mongoose.Types.ObjectId.isValid(data.categoryId)) {
-        throw new AppError(400, "A valid Category ID is required.");
-    }
-
     if (!data.startTime || !data.endTime) {
         throw new AppError(400, "Start time and end time are required.");
     }
 
-    // Parse the custom date format
-    // const startTime = parseCustomDateFormat(data.startTime);
-    // const endTime = parseCustomDateFormat(data.endTime);
+    const startTime = parseIndianDateTime(data.startTime);
+    const endTime = parseIndianDateTime(data.endTime);
 
-    // if (isNaN(startTime) || isNaN(endTime)) {
-    //     throw new AppError(400, "Invalid date format. Use 'DD/MM/YYYY HH:mm:ss'.");
-    // }
-
-    // if (startTime <= now) {
-    //     throw new AppError(400, "Start time must be in the future.");
-    // }
-
-    // if (endTime <= startTime) {
-    //     throw new AppError(400, "End time must be after start time.");
-    // }
-    const startTime = parseCustomDateFormat(data.startTime);
-    console.log("STT", startTime);
-    const endTime = parseCustomDateFormat(data.endTime);
-    console.log("ETTT", endTime);
-    if (data.startTime) {
-        if (isNaN(startTime)) {
-            throw new AppError(400, "Invalid date format. Use 'DD/MM/YYYY HH:mm:ss'.");
-        }
-        if (startTime <= new Date()) {
-            throw new AppError(400, "Start time must be in the future.");
-        }
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
+        throw new AppError(400, "Invalid date format. Use 'DD/MM/YYYY HH:mm'.");
     }
-    // Validate and update endTime
-    if (data.endTime) {
-        if (isNaN(endTime)) {
-            throw new AppError(400, "Invalid date format. Use 'DD/MM/YYYY HH:mm:ss'.");
-        }
-        if (startTime && endTime <= startTime) {
-            throw new AppError(400, "End time must be after start time.");
-        }
+
+    if (startTime <= new Date()) {
+        throw new AppError(400, "Start time must be in the future.");
+    }
+
+    if (endTime <= startTime) {
+        throw new AppError(400, "End time must be after start time.");
     }
 
     if (!data.startPrice || typeof data.startPrice !== "number" || data.startPrice <= 0) {
-        throw new AppError(400, "Start price is required and must be a positive number.");
+        throw new AppError(400, "Start price must be a positive number.");
     }
 
     if (!data.reservePrice || typeof data.reservePrice !== "number" || data.reservePrice <= 0) {
-        throw new AppError(400, "Reserve price is required and must be a positive number.");
+        throw new AppError(400, "Reserve price must be a positive number.");
     }
 
     if (data.startPrice >= data.reservePrice) {
         throw new AppError(400, "Start price must be less than reserve price.");
     }
+
+    return { startTime, endTime }; // Return the parsed times
 };
+
 
 // create placed 
 export const createAuctionProduct = async (body) => {
     try {
         logger.info(`creting the auction product`);
-        validateAuctionData(body);
-        const startTime = parseCustomDateFormat(body.startTime);
-        const endTime = parseCustomDateFormat(body.endTime);
-        if (body.categoryId) {
-            // implement the category api 
-            body.categoryId = new mongoose.Types.ObjectId(body.categoryId);
-            // body.categoryId = ObjectId(body.categoryId);
-            // const categoryResponse = await getMethod(
-            //     `${config.CATEGORY_API}/user/getForAuthentication?id=${body.categoryId}`
-            // );
-            const category = await categoryModel.findOne({ _id: body.categoryId });
-            if (!category) delete body.categoryId;
-        }
+        const { startTime, endTime } = validateAuctionData(body);
+
         const payload = {
-            title: body.title,
-            description: body.description,
-            categoryId: body.categoryId,
+            productId: body.productId,
             auctioneerId: body.userId,
-            startTime: startTime,
-            endTime: endTime,
+            startTime,       // <- Actual Date object
+            endTime,         // <- Actual Date object
             startPrice: body.startPrice,
             reservePrice: body.reservePrice,
-            // image:body.image,
             createdBy: body.userId,
             updatedBy: body.userId,
-        }
+        };
         const craetedAuctionProduct = await createRecord(payload);
         const populateQuery = [
             { path: "auctioneerId", select: ["_id", "username", "accountType"] },
             {
-                path: "categoryId", select: ["_id", "username", "categoryName", "status",],
+                path: "productId", select: ["_id", "title", "description", "status",],
                 populate: {
-                    path: "createdBy",
-                    select: ["_id", "username"]
+                    path: "categoryId",
+                    select: ["_id", "categoryName"]
                 }
             },
             { path: "createdBy", select: ["_id", "username"] },
@@ -171,10 +124,10 @@ export const getAllAuctionProducts = async (query) => {
     const populateQuery = [
         { path: "auctioneerId", select: ["_id", "username", "accountType"] },
         {
-            path: "categoryId", select: ["_id", "username", "categoryName", "status",],
+            path: "productId", select: ["_id", "title", "description", "status",],
             populate: {
-                path: "createdBy",
-                select: ["_id", "username"]
+                path: "categoryId",
+                select: ["_id", "categoryName"]
             }
         },
         { path: "createdBy", select: ["_id", "username"] },
@@ -194,10 +147,10 @@ export const getOneAuctionProduct = async (auctionProductId) => {
     const populateQuery = [
         { path: "auctioneerId", select: ["_id", "username", "accountType"] },
         {
-            path: "categoryId", select: ["_id", "username", "categoryName", "status",],
+            path: "productId", select: ["_id", "title", "description", "status",],
             populate: {
-                path: "createdBy",
-                select: ["_id", "username"]
+                path: "categoryId",
+                select: ["_id", "categoryName"]
             }
         },
         { path: "createdBy", select: ["_id", "username"] },
@@ -276,10 +229,10 @@ export const updateAuctionProduct = async (auctionProductId, body) => {
         const populateQuery = [
             { path: "auctioneerId", select: ["_id", "username", "accountType"] },
             {
-                path: "categoryId", select: ["_id", "username", "categoryName", "status",],
+                path: "productId", select: ["_id", "title", "description", "status",],
                 populate: {
-                    path: "createdBy",
-                    select: ["_id", "username"]
+                    path: "categoryId",
+                    select: ["_id", "categoryName"]
                 }
             },
             { path: "createdBy", select: ["_id", "username"] },
@@ -312,35 +265,61 @@ export const deleteAuctionProduct = async (auctionProductId) => {
     }
 }
 
-// Republish 
 export const publishAuctioneerProduct = async (auctionProductId, body) => {
     try {
         logger.info("Publish Auctioneer Product Started");
+
+        // Validate ID
         if (!mongoose.Types.ObjectId.isValid(auctionProductId)) {
             throw new AppError(400, "Invalid auction product ID.");
         }
-        const auctioneerProduct = await findOnlyOneRecord({ _id: auctionProductId })
-        if (!auctioneerProduct) throw new AppError(404, 'Auction Product Not Found')
-        if (auctioneerProduct.endTime > Date.now()) {
-            throw new AppError(400, `Auction Product Is Already Active. Can't Publish`)
-        }
-        const condition = {
-            _id: auctioneerProduct._id
-        }
-        const updateData = {
-            updatedBy: body.userId
-        }
-        // startTime & endTime need to implement
-        if (body.status) {
-            updateData.status = body.status
-        }
-        const record = await updateRecord(condition, updateData);
 
-        return record
+        // Fetch the existing auction
+        const auctioneerProduct = await findOnlyOneRecord({ _id: auctionProductId });
+        if (!auctioneerProduct) throw new AppError(404, "Auction Product Not Found");
+
+        // If auction hasn't ended yet, prevent republish
+        if (new Date(auctioneerProduct.endTime) > new Date()) {
+            throw new AppError(400, `Auction is still active. Can't republish.`);
+        }
+
+        // Validate and parse new start/end times
+        if (!body.startTime || !body.endTime) {
+            throw new AppError(400, "Start time and end time are required for republishing.");
+        }
+
+        const startTime = new Date(body.startTime);
+        const endTime = new Date(body.endTime);
+
+        if (isNaN(startTime) || isNaN(endTime)) {
+            throw new AppError(400, "Invalid date format. Use ISO or valid date string.");
+        }
+
+        if (startTime <= new Date()) {
+            throw new AppError(400, "Start time must be in the future.");
+        }
+
+        if (endTime <= startTime) {
+            throw new AppError(400, "End time must be after start time.");
+        }
+
+        // Prepare update
+        const condition = { _id: auctioneerProduct._id };
+        const updateData = {
+            startTime,
+            endTime,
+            status: body.status || "upcoming",
+            updatedBy: body.userId,
+        };
+
+        const record = await updateRecord(condition, updateData);
+        return record;
+
     } catch (error) {
-        throw new AppError(400, error.message)
+        throw new AppError(400, error.message);
     }
-}
+};
+
 
 // currentAuctioneerProduct
 export const currentAuctioneerProduct = async (loggedIn) => {

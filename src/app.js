@@ -5,6 +5,7 @@ import cors from "cors"
 import { routes } from "./routes/index.js";
 import * as responser from "./core/responser.js"
 import { errorHandler } from "./core/globalError.js";
+import "./jobs/index.js";
 
 const app = express();
 app.use(cors());

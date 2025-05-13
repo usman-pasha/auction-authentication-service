@@ -1,23 +1,22 @@
 import mongoose from "mongoose";
 const { Schema } = mongoose;
 import { userModel } from "./user.model.js"
-import { categoryModel } from "./category.model.js"
+import { productModel } from "./product.model.js"
 
 const auctionSchema = new Schema(
   {
-    title: { type: String, required: true },
-    description: { type: String, required: true },
-    categoryId: { type: Schema.Types.ObjectId, required: true, ref: "category" },
+    productId: { type: Schema.Types.ObjectId, required: true, ref: "product" },
     auctioneerId: { type: Schema.Types.ObjectId, required: true, ref: "user" },
-    startTime: { type: String, },
-    endTime: { type: String, },
+    startTime: { type: Date, required: true },
+    endTime: { type: Date, required: true },
+
+    // "timeRemaining": "3600" // seconds or human readable.
     startPrice: { type: Number, required: true },
     reservePrice: { type: Number, required: true },
     status: { type: String, enum: ['upcoming', 'active', 'closed'], default: 'upcoming' },
-    // images: { type: [String], required: true },
     bidIds: [{ type: Schema.Types.ObjectId, ref: 'bid' }],
     currentBidPrice: { type: Number, default: 0 },
-    highestBid: { // Reference to the highest bid
+    highestBid: {
       bidderId: { type: Schema.Types.ObjectId, ref: "user" },
       amount: { type: Number, default: 0 },
     },
@@ -27,4 +26,4 @@ const auctionSchema = new Schema(
   { timestamps: true }
 );
 
-export const auctionModel = mongoose.model('auction', auctionSchema);
+export const auctionModel = mongoose.model("auction", auctionSchema);
