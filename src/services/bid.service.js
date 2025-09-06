@@ -70,6 +70,12 @@ export const placedBid = async (body) => {
 
         // Validate bid amount (it must be higher than both the start price and the current highest bid)
         const currentHighestBid = auctionProduct.highestBid.amount || 0;
+
+        // ⚡ Prevent same user from bidding consecutively
+        if (auctionProduct.highestBid.bidderId && auctionProduct.highestBid.bidderId._id.toString() === body.userId) {
+            throw new AppError(400, "You already have the highest bid. Wait for another user to bid.");
+        }
+
         if (body.bidAmount <= currentHighestBid) {
             throw new AppError(400, `Bid amount must be higher than the current highest bid: ${currentHighestBid}`);
         }
