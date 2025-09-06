@@ -1,9 +1,7 @@
 import cron from "node-cron";
 import { updateAuctionStatuses } from "./auction.js";
 
-// Run every minute
-cron.schedule("*/2 * * * *", async () => {
+// Run every 2 minutes in UTC
+cron.schedule("*/20 * * * * *", async () => {
     await updateAuctionStatuses();
-}, {
-    timezone: "Asia/Kolkata" // for IST
 });

@@ -36,13 +36,6 @@ export const deleteRecord = async (condition) => {
 };
 
 // placed bid 
-// Function to convert UTC to IST (Indian Standard Time)
-const convertUTCtoIST = (utcDate) => {
-    // Add 5 hours and 30 minutes to convert to IST
-    const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000);
-    return istDate;
-};
-
 export const placedBid = async (body) => {
     try {
         logger.info(`Placing the Bid`);
@@ -59,20 +52,6 @@ export const placedBid = async (body) => {
             if (!auctionProduct) throw new AppError(404, "Auction Product not found");
         }
         // Check if the auction is active and within valid time range
-        // const now = new Date();
-        // const currentTimeInIST = convertUTCtoIST(now);
-
-        // // Stop bidding if auction has ended
-        // if (auctionProduct.endTime < currentTimeInIST) {
-        //     throw new AppError(400, 'Auction Has Ended. No more bids allowed');
-        // }
-        // console.log(auctionProduct.startTime);
-
-        // if (auctionProduct.startTime > currentTimeInIST) {
-        //     throw new AppError(400, 'Auction Has Not Started Yet');
-        // }
-
-        // Check if the auction is active and within valid time range
         const nowUTC = new Date(); // current time in UTC
 
         // Stop bidding if auction has ended
@@ -84,7 +63,6 @@ export const placedBid = async (body) => {
         if (auctionProduct.startTime > nowUTC) {
             throw new AppError(400, 'Auction Has Not Started Yet');
         }
-
 
         if (auctionProduct.status !== 'active') {
             throw new AppError(400, "Bidding is only allowed on active auctions");
@@ -143,7 +121,6 @@ export const placedBid = async (body) => {
         throw new AppError(400, error.message);
     }
 };
-
 
 // 
 export const getAllBids = async (currentBidId) => {
