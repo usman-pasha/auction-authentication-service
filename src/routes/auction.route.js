@@ -16,6 +16,7 @@ auctionRoute.patch("/update/:auctionProductId", catchError(auctionController.upd
 auctionRoute.delete("/delete/:auctionProductId", catchError(auctionController.deleteAuctionProduct))
 auctionRoute.patch("/publish/:auctionProductId", catchError(auctionController.publishAuctioneerProduct))
 auctionRoute.get("/currentProducts", catchError(auctionController.currentAuctioneerProduct))
+auctionRoute.patch("/close/:auctionId", catchError(auctionController.closeAuction))
 
 export default auctionRoute;
 

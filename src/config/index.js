@@ -1,12 +1,17 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 const config = {
-    PORT: 5006,
-    // MONGO_URI: 'mongodb://root:testing@db:27017/auction?authSource=admin',
-    MONGO_URI: 'mongodb://127.0.0.1:27017/auction',
-    // MONGO_URI: 'mongodb://root:testing@mongo:27017/auction?authSource=admin',
-    ACCESS_SECRET: "23ty7hfe2oidhuwgjoifjfe",
-    ACCESS_VALIDITY: '1d',
-    REFRESH_SECRET: "vhjqhevuwhufeijoi13431hy",
-    REFRESH_VALIDITY: '7d',
+    PORT: process.env.PORT || 5006,
+    ACCESS_VALIDITY: process.env.ACCESS_VALIDITY,
+    ACCESS_SECRET: process.env.ACCESS_SECRET,
+    REFRESH_VALIDITY: process.env.REFRESH_VALIDITY,
+    REFRESH_SECRET: process.env.REFRESH_SECRET,
+    DB_URI_TEST: process.env.DB_URI_TEST,
+    DB_URI: process.env.DB_URI,
+    NODEMAILER_USER: process.env.NODEMAILER_USER,
+    NODEMAILER_PASS: process.env.NODEMAILER_PASS,
+    USEREMAIL: process.env.USEREMAIL,
 }
 
 export { config }

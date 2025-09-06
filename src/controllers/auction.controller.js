@@ -5,7 +5,8 @@ import {
     getAllAuctionProducts,
     getOneAuctionProduct,
     publishAuctioneerProduct,
-    currentAuctioneerProduct
+    currentAuctioneerProduct,
+    closeAuction
 } from "../services/auction.service.js";
 import * as responser from "../core/responser.js";
 import * as logger from "../utility/log.js"
@@ -64,6 +65,12 @@ class auctionController {
         const data = await currentAuctioneerProduct(loggedInAuctioneer);
         logger.info(data)
         return responser.send(200, `Successfully Current Aution Product Fetched`, req, res, data);
+    };
+    // close auction winner 
+    closeAuction = async (req, res) => {
+        const data = await closeAuction(req.params);
+        logger.info(data)
+        return responser.send(200, `Successfully Auction Closed`, req, res, data);
     };
 }
 

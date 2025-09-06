@@ -16,7 +16,7 @@ const startServer = () => {
     server.listen(config.PORT, async () => {
         console.log(`App is Running on Port: ${config.PORT}`);
         try {
-            await db(config.MONGO_URI); // Connect to the database
+            await db(config.DB_URI); // Connect to the database
             // console.log("Database connection successful");
         } catch (err) {
             console.error("Database connection failed:", err);
@@ -36,15 +36,14 @@ const startServer = () => {
     io.on("connection", (socket) => {
         console.log("A user connected:", socket.id);
 
-        socket.on("getBids", async () => {
-            try {
-                const allBids = await getAllBids(); // Fetch all bids from the database
-                socket.emit("currentBids", allBids); // Send the data back to the client
-            } catch (err) {
-                console.error("Error fetching bids:", err.message);
-            }
+        socket.on('getInitialBids', async(data) => {
+            const auctionProductId = data.auctionProductId;
+
+            // Fetch the initial bid data from the database
+            const bids =await getAllBids(auctionProductId); // Your method to fetch bids
+
+            socket.emit('initialBids', bids);
         });
-        
         // Listen for new bids
         socket.on("placeBid", async (bidData) => {
             try {
@@ -66,7 +65,6 @@ const startServer = () => {
                 socket.emit("bidError", { message: err.message });
             }
         });
-
         // Handle disconnection
         socket.on("disconnect", () => {
             console.log("User disconnected:", socket.id);

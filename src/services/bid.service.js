@@ -36,50 +36,71 @@ export const deleteRecord = async (condition) => {
 };
 
 // placed bid 
+// Function to convert UTC to IST (Indian Standard Time)
+const convertUTCtoIST = (utcDate) => {
+    // Add 5 hours and 30 minutes to convert to IST
+    const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000);
+    return istDate;
+};
+
 export const placedBid = async (body) => {
     try {
-        logger.info(`Placing the Bid`)
+        logger.info(`Placing the Bid`);
+
+        // Check for missing required parameters
         if (!body.bidAmount || !body.auctionProductId) {
-            throw new AppError(400, "Required Parameters")
+            throw new AppError(400, "Required Parameters");
         }
+
+        // Fetch the auction product
         const auctionProduct = await auctionModel.findOne({ _id: body.auctionProductId });
         if (body.auctionProductId) {
             body.auctionProductId = new mongoose.Types.ObjectId(body.auctionProductId);
             if (!auctionProduct) throw new AppError(404, "Auction Product not found");
         }
+        // Check if the auction is active and within valid time range
+        const now = new Date();
+        const currentTimeInIST = convertUTCtoIST(now);
 
-        // Check if the auction is active
+        // Stop bidding if auction has ended
+        if (auctionProduct.endTime < currentTimeInIST) {
+            throw new AppError(400, 'Auction Has Ended. No more bids allowed');
+        }
+
         if (auctionProduct.status !== 'active') {
             throw new AppError(400, "Bidding is only allowed on active auctions");
         }
-        const now = new Date();
-        if (new Date(auctionProduct.startTime) > now) {
-            throw new AppError(400, 'Auction Has Not Started Yet')
-        }
-        if (new Date(auctionProduct.endTime) < now) {
-            throw new AppError(400, 'Auction Is Ended')
+
+        console.log(auctionProduct.startTime);
+        
+        if (auctionProduct.startTime > currentTimeInIST) {
+            throw new AppError(400, 'Auction Has Not Started Yet');
         }
 
-        // Validate bid amount
+        // Validate bid amount (it must be higher than both the start price and the current highest bid)
         const currentHighestBid = auctionProduct.highestBid.amount || 0;
         if (body.bidAmount <= currentHighestBid) {
             throw new AppError(400, `Bid amount must be higher than the current highest bid: ${currentHighestBid}`);
         }
-        // check bidAmount and starting startPrice from auction
 
-        // Prepare payload for creating the bid
+        if (body.bidAmount < auctionProduct.startPrice) {
+            throw new AppError(400, `Bid amount must be higher than the starting price: ${auctionProduct.startPrice}`);
+        }
+
+        // Prepare the payload for bid creation
         const payload = {
             auctionProductId: body.auctionProductId,
             userId: body.userId,
             bidAmount: Number(body.bidAmount),
         };
 
-        // Create a new bid record
+        // Create the bid record
         const bidCreate = await createRecord(payload);
         if (!bidCreate || !bidCreate._id) {
             throw new AppError(500, "Failed to create the bid record");
         }
-        // Update auction with the new highest bid and add the bid ID to bidIds
+
+        // Update the auction with the new highest bid and bidId
         await auctionModel.findOneAndUpdate(
             { _id: bidCreate.auctionProductId },
             {
@@ -96,17 +117,20 @@ export const placedBid = async (body) => {
         );
 
         logger.info("Bid placed successfully");
+
+        // Populate the auction and user details for the response
         const populateQuery = [
             { path: "auctionProductId", select: ["_id", "title", "description", "bidIds"] },
             { path: "userId", select: ["_id", "username", "accountType"] },
-        ]
+        ];
         const bid = await findOnlyOneRecord({ _id: bidCreate._id }, populateQuery);
-        // logger.data("bidd", bid)
+
         return bid;
     } catch (error) {
-        throw new AppError(400, error.message)
+        throw new AppError(400, error.message);
     }
-}
+};
+
 
 // 
 export const getAllBids = async (currentBidId) => {
@@ -117,10 +141,16 @@ export const getAllBids = async (currentBidId) => {
         }
         const populateQuery = [
             { path: "auctionProductId", select: ["_id", "title", "description", "bidIds"] },
+            {
+            path: "auctionProductId", select: ["_id", "bidIds"],
+            populate: {
+                path: "productId",
+                select: ["_id", "title", "description", "status"]
+            }
+        },
             { path: "userId", select: ["_id", "username", "accountType"] },
         ]
         const bid = await bidModel.find(condition).populate(populateQuery).sort({ bidAmount: -1 });
-        logger.data("bidd", bid)
         return bid;
     } catch (error) {
         throw new AppError(400, error.message)

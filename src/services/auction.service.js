@@ -1,10 +1,9 @@
 import AppError from "../core/appError.js";
 import { auctionModel } from "../models/auction.model.js"
 import { categoryModel } from "../models/category.model.js"
+import { productModel } from "../models/product.model.js"
 import * as logger from "../utility/log.js";
 import mongoose from "mongoose";
-// import { Schema } from "mongoose"
-// const ObjectId = Schema.Types.ObjectId
 
 export const createRecord = async (object) => {
     const record = await auctionModel.create(object);
@@ -46,7 +45,6 @@ const parseIndianDateTime = (dateTimeString) => {
     return new Date(istDate.getTime() + 5.5 * 60 * 60 * 1000); // Shift to IST
 };
 
-
 export const validateAuctionData = (data) => {
     if (!data.startTime || !data.endTime) {
         throw new AppError(400, "Start time and end time are required.");
@@ -83,7 +81,7 @@ export const validateAuctionData = (data) => {
 };
 
 
-// create placed 
+// create auction
 export const createAuctionProduct = async (body) => {
     try {
         logger.info(`creting the auction product`);
@@ -130,10 +128,14 @@ export const getAllAuctionProducts = async (query) => {
                 select: ["_id", "categoryName"]
             }
         },
+        {
+            path: "highestBid.bidderId",
+            select: ["_id", "username", "email"] // You can customize the fields here
+        },
         { path: "createdBy", select: ["_id", "username"] },
         { path: "updatedBy", select: ["_id", "username"] },
     ]
-    const selectQuery = "-bidIds -highestBid -createdAt -updatedAt -__v ";
+    const selectQuery = "-bidIds -createdAt -updatedAt -__v ";
     const record = await findAllRecords(query, populateQuery, selectQuery)
     return record
 }
@@ -153,12 +155,48 @@ export const getOneAuctionProduct = async (auctionProductId) => {
                 select: ["_id", "categoryName"]
             }
         },
+        {
+            path: "highestBid.bidderId",
+            select: ["_id", "username", "email"] // You can customize the fields here
+        },
+        {
+            path: "bidIds",
+            select: ["_id", "userId", "bidAmount", "bidTime"], // You can customize the fields here
+            populate: {
+                path: "userId",
+                select: ["_id", "username",]
+            }
+        },
         { path: "createdBy", select: ["_id", "username"] },
         { path: "updatedBy", select: ["_id", "username"] },
     ]
-    const selectQuery = "-bidIds -highestBid -createdAt -updatedAt -__v ";
+    const selectQuery = "-createdAt -updatedAt -__v ";
     const record = await findOnlyOneRecord(condition, populateQuery, selectQuery)
-    return record
+    // 🔥 Add winner field if auction is closed and a highestBid exists
+
+    const recordObj = record.toObject();
+
+    if (record.status === 'closed') {
+        if (record.highestBid && record.highestBid.bidderId) {
+            recordObj.winner = {
+                _id: record.highestBid.bidderId._id,
+                username: record.highestBid.bidderId.username,
+                email: record.highestBid.bidderId.email,
+                amount: record.highestBid.amount
+            };
+            recordObj.sold = "sold";
+        } else {
+            recordObj.winner = "unsold";
+            recordObj.sold = "unsold";
+        }
+    } else {
+        recordObj.winner = null;
+        recordObj.sold = null;
+    }
+
+    return recordObj;
+
+    // return record
 }
 
 export const updateAuctionProduct = async (auctionProductId, body) => {
@@ -348,6 +386,69 @@ export const currentAuctioneerProduct = async (loggedIn) => {
         throw new AppError(400, error.message)
     }
 }
+
+const convertUTCtoIST = (utcDate) => {
+    // Add 5 hours and 30 minutes to convert to IST
+    const istDate = new Date(utcDate.getTime() + 5.5 * 60 * 60 * 1000);
+    return istDate;
+};
+
+// Close Auction API and show winner 
+export const closeAuction = async (body) => {
+    try {
+        const auctionId = body.auctionId;
+        // 1. Find the auction
+        const auction = await auctionModel.findById(auctionId).populate("highestBid.bidderId");
+        if (!auction) throw new AppError(404, "Auction not found");
+
+        if (auction.status !== "active") {
+            throw new AppError(400, "Auction is not active");
+        }
+
+        // 2. Check if auction has ended
+        const now = new Date();
+        const currentTime = convertUTCtoIST(now);
+        if (new Date(auction.endTime) > currentTime) {
+            throw new AppError(400, "Auction has not ended yet");
+        }
+
+        // 3. Find the related product
+        const product = await productModel.findOne({ _id: auction.productId });
+        if (!product) throw new AppError(404, "Associated product not found");
+
+        // 4. Update product status
+        let productStatus = "unsold";
+
+        if (auction.highestBid && auction.highestBid.amount > 0) {
+            product.status = "sold";
+            productStatus = "sold";
+        } else {
+            product.status = "unsold";
+        }
+
+        // 5. Update records
+        auction.status = "closed";
+        await product.save();
+        await auction.save();
+
+        // 6. Return result
+        const record = {
+            productStatus,
+            winner: productStatus === "sold"
+                ? {
+                    userId: auction.highestBid.bidderId._id,
+                    name: auction.highestBid.bidderId.fullName || auction.highestBid.bidderId.username,
+                    amount: auction.highestBid.amount
+                }
+                : null
+        };
+
+        return record;
+    } catch (error) {
+        throw new AppError(400, error.message);
+    }
+};
+
 
 // let segments = [];
 // //TODO: getsegments need to be implemented
