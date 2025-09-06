@@ -27,7 +27,9 @@ export const registerBidder = async (body) => {
         emailOtpExpiry: Date.now() + 5 * 60 * 1000,
         phoneOTP: generateOTP(),
         phoneOtpExpiry: Date.now() + 5 * 60 * 1000,
-        accountType: "Bidder"
+        accountType: "Bidder",
+        status:"active",
+        phoneIsVerified:true
     };
     if (body.username) payload.username = body.username;
     if (body.email) payload.email = body.email;
