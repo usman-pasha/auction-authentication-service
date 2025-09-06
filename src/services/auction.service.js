@@ -35,23 +35,33 @@ export const deleteRecord = async (condition) => {
     return record;
 };
 
-const parseIndianDateTime = (dateTimeString) => {
+// const parseIndianDateTime = (dateTimeString) => {
+//     const [datePart, timePart] = dateTimeString.split(" ");
+//     const [day, month, year] = datePart.split("/").map(Number);
+//     const [hours, minutes] = timePart.split(":").map(Number);
+
+//     // Create a date in IST
+//     const istDate = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
+//     return new Date(istDate.getTime() + 5.5 * 60 * 60 * 1000); // Shift to IST
+// };
+
+function parseISTToUTC(dateTimeString) {
     const [datePart, timePart] = dateTimeString.split(" ");
     const [day, month, year] = datePart.split("/").map(Number);
     const [hours, minutes] = timePart.split(":").map(Number);
 
-    // Create a date in IST
-    const istDate = new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
-    return new Date(istDate.getTime() + 5.5 * 60 * 60 * 1000); // Shift to IST
-};
+    // Treat the IST time as UTC by adding the offset
+    return new Date(Date.UTC(year, month - 1, day, hours - 5, minutes - 30));
+}
+
 
 export const validateAuctionData = (data) => {
     if (!data.startTime || !data.endTime) {
         throw new AppError(400, "Start time and end time are required.");
     }
 
-    const startTime = parseIndianDateTime(data.startTime);
-    const endTime = parseIndianDateTime(data.endTime);
+    const startTime = parseISTToUTC(data.startTime);
+    const endTime = parseISTToUTC(data.endTime);
 
     if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) {
         throw new AppError(400, "Invalid date format. Use 'DD/MM/YYYY HH:mm'.");

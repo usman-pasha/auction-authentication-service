@@ -59,22 +59,35 @@ export const placedBid = async (body) => {
             if (!auctionProduct) throw new AppError(404, "Auction Product not found");
         }
         // Check if the auction is active and within valid time range
-        const now = new Date();
-        const currentTimeInIST = convertUTCtoIST(now);
+        // const now = new Date();
+        // const currentTimeInIST = convertUTCtoIST(now);
+
+        // // Stop bidding if auction has ended
+        // if (auctionProduct.endTime < currentTimeInIST) {
+        //     throw new AppError(400, 'Auction Has Ended. No more bids allowed');
+        // }
+        // console.log(auctionProduct.startTime);
+
+        // if (auctionProduct.startTime > currentTimeInIST) {
+        //     throw new AppError(400, 'Auction Has Not Started Yet');
+        // }
+
+        // Check if the auction is active and within valid time range
+        const nowUTC = new Date(); // current time in UTC
 
         // Stop bidding if auction has ended
-        if (auctionProduct.endTime < currentTimeInIST) {
+        if (auctionProduct.endTime < nowUTC) {
             throw new AppError(400, 'Auction Has Ended. No more bids allowed');
         }
 
-        if (auctionProduct.status !== 'active') {
-            throw new AppError(400, "Bidding is only allowed on active auctions");
+        // Stop bidding if auction has not started yet
+        if (auctionProduct.startTime > nowUTC) {
+            throw new AppError(400, 'Auction Has Not Started Yet');
         }
 
-        console.log(auctionProduct.startTime);
-        
-        if (auctionProduct.startTime > currentTimeInIST) {
-            throw new AppError(400, 'Auction Has Not Started Yet');
+
+        if (auctionProduct.status !== 'active') {
+            throw new AppError(400, "Bidding is only allowed on active auctions");
         }
 
         // Validate bid amount (it must be higher than both the start price and the current highest bid)
@@ -142,12 +155,12 @@ export const getAllBids = async (currentBidId) => {
         const populateQuery = [
             { path: "auctionProductId", select: ["_id", "title", "description", "bidIds"] },
             {
-            path: "auctionProductId", select: ["_id", "bidIds"],
-            populate: {
-                path: "productId",
-                select: ["_id", "title", "description", "status"]
-            }
-        },
+                path: "auctionProductId", select: ["_id", "bidIds"],
+                populate: {
+                    path: "productId",
+                    select: ["_id", "title", "description", "status"]
+                }
+            },
             { path: "userId", select: ["_id", "username", "accountType"] },
         ]
         const bid = await bidModel.find(condition).populate(populateQuery).sort({ bidAmount: -1 });
