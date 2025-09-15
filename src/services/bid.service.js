@@ -131,10 +131,11 @@ export const placedBid = async (body) => {
 // 
 export const getAllBids = async (currentBidId) => {
     try {
-        logger.info(`Placing the Bid Get`);
+        logger.info(`Get All the Bids`);
         const condition = {
             auctionProductId: currentBidId
         }
+        console.log("condition",condition)
         const populateQuery = [
             { path: "auctionProductId", select: ["_id", "title", "description", "bidIds"] },
             {
